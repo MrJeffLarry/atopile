@@ -296,14 +296,57 @@ def pick_parts(
         
         if missing_parts and config.offline:
             unique_missing = sorted(set(missing_parts))
-            error_msg = (
-                "The following parts are missing from the cache and are required to build offline:\n\n"
-                + "\n".join(f"  - {part}" for part in unique_missing)
-                + "\n\nTo fetch these parts, run:\n"
-                + "  ato fetch parts\n\n"
-                + "Or disable offline mode by unsetting ATO_OFFLINE environment variable."
-            )
-            raise UserException(error_msg) from ex
+            
+            # If we're in interactive mode, prompt user
+            if config.interactive:
+                from rich.console import Console
+                import questionary
+                
+                console = Console()
+                console.print("\n[bold red]Missing Parts Detected[/bold red]")
+                console.print("\nThe following parts are missing from the cache:\n")
+                for part in unique_missing:
+                    console.print(f"  • [yellow]{part}[/yellow]")
+                console.print()
+                
+                choice = questionary.select(
+                    "What would you like to do?",
+                    choices=[
+                        "Fetch missing parts from the internet",
+                        "Exit and fetch manually later"
+                    ]
+                ).ask()
+                
+                if choice == "Fetch missing parts from the internet":
+                    console.print("\n[cyan]Fetching parts...[/cyan]")
+                    # Temporarily disable offline mode
+                    original_offline = config.offline
+                    config.offline = False
+                    try:
+                        # Retry picking
+                        pick_part_recursively(app, solver, progress=log_context)
+                        console.print("[green]✓[/green] Parts fetched successfully!")
+                    except Exception as fetch_ex:
+                        console.print(f"[red]Failed to fetch parts:[/red] {fetch_ex}")
+                        raise
+                    finally:
+                        config.offline = original_offline
+                else:
+                    error_msg = (
+                        "Build cancelled. To fetch parts manually, run:\n"
+                        "  ato fetch-parts"
+                    )
+                    raise UserException(error_msg) from ex
+            else:
+                # Non-interactive mode - show error message
+                error_msg = (
+                    "The following parts are missing from the cache and are required to build offline:\n\n"
+                    + "\n".join(f"  - {part}" for part in unique_missing)
+                    + "\n\nTo fetch these parts, run:\n"
+                    + "  ato fetch-parts\n\n"
+                    + "Or disable offline mode by unsetting ATO_OFFLINE environment variable."
+                )
+                raise UserException(error_msg) from ex
         
         raise ExceptionGroup(
             "Failed to pick parts for some modules",
