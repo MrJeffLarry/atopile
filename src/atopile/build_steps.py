@@ -269,12 +269,85 @@ def load_pcb(
 def pick_parts(
     app: Module, solver: Solver, pcb: F.PCB, log_context: LoggingStage
 ) -> None:
+    from faebryk.libs.picker.lcsc import LCSC_OfflineMissingPartException
+    from faebryk.libs.picker.api.api import ApiNotConfiguredError
+    from atopile.errors import UserException
+    
     if config.build.keep_picked_parts:
         load_part_info_from_pcb(app.get_graph())
         solver.simplify(app.get_graph())
+    
+    missing_parts = []
     try:
         pick_part_recursively(app, solver, progress=log_context)
     except* PickError as ex:
+        # Check if any errors are due to missing parts in offline mode
+        for e in iter_leaf_exceptions(ex):
+            cause = e.__cause__
+            while cause:
+                if isinstance(cause, LCSC_OfflineMissingPartException):
+                    missing_parts.append(cause.partno)
+                    break
+                if isinstance(cause, ApiNotConfiguredError):
+                    # This means we're in offline mode and tried to fetch
+                    missing_parts.append("(unknown part)")
+                    break
+                cause = cause.__cause__
+        
+        if missing_parts and config.offline:
+            unique_missing = sorted(set(missing_parts))
+            
+            # If we're in interactive mode, prompt user
+            if config.interactive:
+                from rich.console import Console
+                import questionary
+                
+                console = Console()
+                console.print("\n[bold red]Missing Parts Detected[/bold red]")
+                console.print("\nThe following parts are missing from the cache:\n")
+                for part in unique_missing:
+                    console.print(f"  • [yellow]{part}[/yellow]")
+                console.print()
+                
+                choice = questionary.select(
+                    "What would you like to do?",
+                    choices=[
+                        "Fetch missing parts from the internet",
+                        "Exit and fetch manually later"
+                    ]
+                ).ask()
+                
+                if choice == "Fetch missing parts from the internet":
+                    console.print("\n[cyan]Fetching parts...[/cyan]")
+                    # Temporarily disable offline mode
+                    original_offline = config.offline
+                    config.offline = False
+                    try:
+                        # Retry picking
+                        pick_part_recursively(app, solver, progress=log_context)
+                        console.print("[green]✓[/green] Parts fetched successfully!")
+                    except Exception as fetch_ex:
+                        console.print(f"[red]Failed to fetch parts:[/red] {fetch_ex}")
+                        raise
+                    finally:
+                        config.offline = original_offline
+                else:
+                    error_msg = (
+                        "Build cancelled. To fetch parts manually, run:\n"
+                        "  ato fetch-parts"
+                    )
+                    raise UserException(error_msg) from ex
+            else:
+                # Non-interactive mode - show error message
+                error_msg = (
+                    "The following parts are missing from the cache and are required to build offline:\n\n"
+                    + "\n".join(f"  - {part}" for part in unique_missing)
+                    + "\n\nTo fetch these parts, run:\n"
+                    + "  ato fetch-parts\n\n"
+                    + "Or disable offline mode by unsetting ATO_OFFLINE environment variable."
+                )
+                raise UserException(error_msg) from ex
+        
         raise ExceptionGroup(
             "Failed to pick parts for some modules",
             [UserPickError(str(e)) for e in iter_leaf_exceptions(ex)],

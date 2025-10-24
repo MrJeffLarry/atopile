@@ -474,13 +474,28 @@ class LCSC_NoDataException(LCSCException): ...
 class LCSC_PinmapException(LCSCException): ...
 
 
+class LCSC_OfflineMissingPartException(LCSCException):
+    """Raised when a part is not available in offline mode"""
+    pass
+
+
 @once
 def get_raw(lcsc_id: str) -> EasyEDAAPIResponse:
     from faebryk.libs.part_lifecycle import PartLifecycle
+    from atopile.config import config
 
     lifecycle = PartLifecycle.singleton()
+    
+    # Check if part is cached
     if not lifecycle.easyeda_api.shall_refresh(lcsc_id):
         return lifecycle.easyeda_api.load(lcsc_id)
+    
+    # In offline mode, raise exception if part not cached
+    if config.offline:
+        raise LCSC_OfflineMissingPartException(
+            lcsc_id, 
+            f"Part {lcsc_id} is not available in cache and system is in offline mode"
+        )
 
     logger.debug(f"Downloading API data {lcsc_id}")
     api = EasyedaApi()

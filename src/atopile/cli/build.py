@@ -35,6 +35,14 @@ def build(
             envvar="ATO_FROZEN",
         ),
     ] = None,
+    offline: Annotated[
+        bool,
+        typer.Option(
+            "--offline",
+            help="Build in offline mode (use cached parts only)",
+            envvar="ATO_OFFLINE",
+        ),
+    ] = False,
     keep_picked_parts: bool | None = None,
     keep_net_names: bool | None = None,
     keep_designators: bool | None = None,
@@ -56,6 +64,10 @@ def build(
     from faebryk.libs.exceptions import accumulate, log_user_errors
     from faebryk.libs.kicad.ipc import reload_pcb
     from faebryk.libs.project.dependencies import ProjectDependencies
+
+    # Set offline mode
+    if offline:
+        config.offline = True
 
     config.apply_options(
         entry=entry,

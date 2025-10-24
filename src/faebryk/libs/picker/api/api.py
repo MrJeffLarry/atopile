@@ -69,6 +69,14 @@ class ApiClient:
         }
 
     def _get(self, url: str, timeout: float = 10) -> Response:
+        from atopile.config import config as ato_config
+        
+        if ato_config.offline:
+            raise ApiNotConfiguredError(
+                "Cannot fetch parts in offline mode. "
+                "Run 'ato fetch parts' to download missing parts or disable offline mode."
+            )
+        
         try:
             with http_client(
                 self._headers,
@@ -94,6 +102,13 @@ class ApiClient:
     def _post(
         self, url: str, data: dict, timeout: float = DEFAULT_API_TIMEOUT_SECONDS
     ) -> Response:
+        from atopile.config import config as ato_config
+        
+        if ato_config.offline:
+            raise ApiNotConfiguredError(
+                "Cannot fetch parts in offline mode. "
+                "Run 'ato fetch parts' to download missing parts or disable offline mode."
+            )
         try:
             with http_client(
                 self._headers,
