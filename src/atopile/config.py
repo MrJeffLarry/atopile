@@ -1130,6 +1130,7 @@ class Config:
     _selected_builds: list[str] | None
     _project_dir: Path | None
     interactive: bool
+    offline: bool
 
     def __init__(self) -> None:
         self._project_dir = _project_dir
@@ -1142,6 +1143,8 @@ class Config:
         except (AttributeError, ValueError):
             # If we can't determine, default to True for better user experience
             self.interactive = True
+        # Check if offline mode is enabled via environment variable
+        self.offline = os.environ.get("ATO_OFFLINE", "0").lower() in ("1", "true", "yes")
 
     def __repr__(self) -> str:
         return self._project.__repr__()

@@ -27,6 +27,7 @@ from atopile.cli import (
     build,
     configure,
     create,
+    fetch,
     inspect_,
     install,
     kicad_ipc,
@@ -154,6 +155,7 @@ app.command(deprecated=True, hidden=True)(install.install)
 app.command(deprecated=True, hidden=True)(configure.configure)
 app.command()(inspect_.inspect)
 app.command()(view.view)
+app.command(name="fetch-parts", help="Fetch missing parts for offline builds")(fetch.fetch_parts)
 app.add_typer(package.package_app, name="package", hidden=True)
 app.add_typer(install.dependencies_app, name="dependencies", help="Manage dependencies")
 app.command(rich_help_panel="Shortcuts")(install.sync)
