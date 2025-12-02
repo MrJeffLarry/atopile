@@ -1,0 +1,71 @@
+name: Go Build and Test
+
+on:
+  push:
+    branches: [ "main", "copilot/go-version-implementation" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    name: Build and Test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        go-version: ['1.21', '1.22', '1.23']
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ matrix.go-version }}
+    
+    - name: Display Go version
+      run: go version
+    
+    - name: Install dependencies
+      run: go mod download
+    
+    - name: Verify dependencies
+      run: go mod verify
+    
+    - name: Build
+      run: go build -v -o ato ./cmd/ato
+    
+    - name: Run tests
+      run: go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...
+    
+    - name: Upload coverage to Codecov
+      if: matrix.os == 'ubuntu-latest' && matrix.go-version == '1.23'
+      uses: codecov/codecov-action@v4
+      with:
+        file: ./coverage.txt
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+    
+    - name: Run linter
+      if: matrix.os == 'ubuntu-latest' && matrix.go-version == '1.23'
+      uses: golangci/golangci-lint-action@v6
+      with:
+        version: latest
+        args: --timeout=5m
+    
+    - name: Test binary works
+      run: |
+        ./ato --help
+        ./ato --version
+        ./ato self-check
+      shell: bash
+    
+    - name: Build with version info
+      if: matrix.os == 'ubuntu-latest' && matrix.go-version == '1.23'
+      run: |
+        VERSION=$(git describe --tags --always --dirty)
+        COMMIT=$(git rev-parse --short HEAD)
+        DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+        go build -ldflags "-X 'github.com/atopile/atopile/internal/version.Version=$VERSION' -X 'github.com/atopile/atopile/internal/version.GitCommit=$COMMIT' -X 'github.com/atopile/atopile/internal/version.BuildDate=$DATE'" -o ato-versioned ./cmd/ato
+        ./ato-versioned --version
