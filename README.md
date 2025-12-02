@@ -95,10 +95,32 @@ High-level steps:
 
 - Development setup: https://docs.atopile.io/atopile/guides/development
 - Editable install (for working on atopile itself): https://docs.atopile.io/atopile/guides/install#editable-installation-best-for-development
+
+### Python version
 - Run tests:
 
 ```sh
 pytest -q
+```
+
+### Go version (experimental)
+
+The Go version is currently in development. See [GO_README.md](GO_README.md) for details.
+
+- Build:
+
+```sh
+make build
+# or
+go build -o bin/ato ./cmd/ato
+```
+
+- Run tests:
+
+```sh
+make test
+# or
+go test ./...
 ```
 
 - Issues and feature requests: https://github.com/atopile/atopile/issues
