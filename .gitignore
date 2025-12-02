@@ -214,3 +214,15 @@ CLAUDE.md
 **/~*.kicad_pcb.lck
 **/~_autosave-*.kicad_pcb.lck
 **/fp-info-cache
+
+# Go build artifacts
+/bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+go.work
+go.work.sum
