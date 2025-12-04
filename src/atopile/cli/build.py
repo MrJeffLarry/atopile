@@ -35,7 +35,13 @@ def build(
             envvar="ATO_FROZEN",
         ),
     ] = None,
-    keep_picked_parts: bool | None = None,
+    keep_picked_parts: Annotated[
+        bool | None,
+        typer.Option(
+            help="Keep automatic picked parts in the PCB layout",
+            envvar="ATO_NEW_PICKED_PARTS",
+        ),
+    ] = True,
     keep_net_names: bool | None = None,
     keep_designators: bool | None = None,
     standalone: bool = False,

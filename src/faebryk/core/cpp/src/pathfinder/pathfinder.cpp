@@ -415,7 +415,8 @@ bool PathFinder::_handle_valid_split_branch(BFSPath &p) {
 
     printf_split("Handle valid split branch: %s\n", p.str().c_str());
 
-    for (auto &split_elem : std::ranges::reverse_view(split_stack)) {
+    for (auto it = split_stack.rbegin(); it != split_stack.rend(); ++it) {
+        auto &split_elem = *it;
         auto &split_point = split_elem.parent_gif;
         auto &splits_at_point = this->split[split_point];
         for (auto &[split_prefix, split_state] : splits_at_point) {
